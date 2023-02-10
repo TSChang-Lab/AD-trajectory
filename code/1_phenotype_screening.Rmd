@@ -1,0 +1,28 @@
+---
+title: "1_phenotype_screening"
+author: "Joy_Fu"
+date: "2023-02-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list = ls())
+pacman::p_load(tidyverse, lubridate)
+
+raw_data_path = "/Users/Mingzhou/Desktop/Projects/AD-trajectory/data/"
+output_path = "/Users/Mingzhou/Desktop/Projects/AD-trajectory/output/"
+
+# Source in useful functions
+# source("code/functions.R")
+load(file = paste0(raw_data_path, "mod/diagnosis_level.rda"))
+```
+
+
+```{r}
+
+```
+

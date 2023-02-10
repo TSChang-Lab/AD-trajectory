@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 rm(list = ls())
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, lubridate)
 
 raw_data_path = "/Users/Mingzhou/Desktop/Projects/AD-trajectory/data/"
 output_path = "/Users/Mingzhou/Desktop/Projects/AD-trajectory/output/"
@@ -36,9 +36,11 @@ rm(AD_encounters_raw)
 # Keep only ICD codes in distance metrics
 load('/Users/Mingzhou/Desktop/Projects/Disease.Similarity/GitHub/data/dist_final_full.rda')
 icd_lst = dist_final_full %>% filter(!is.na(embed_dist)) %>% pull(ICD1) %>% unique() # N = 1619
+rm_codes = grep("^[OPQVXY][0-9]+", icd_lst, value = TRUE)
+icd_lst_filter = setdiff(icd_lst, rm_codes)
 AD_encounters_valid = AD_encounters_clean %>% 
-  filter(ICD_3digit %in% icd_lst)
-dim(AD_encounters_valid) # dim = (3835880,4)
+  filter(ICD_3digit %in% icd_lst_filter)
+dim(AD_encounters_valid) # dim = (3826790,4)
 ```
 
 ## 2. Preprocessing of EHR features
@@ -76,14 +78,44 @@ AD_patients_clean = AD_patients_raw %>%
   )) %>% select(PatientID, Sex, BirthDate, race_ethnicity)
 # Merge together
 AD_merged = AD_encounters_valid %>% left_join(AD_patients_clean) %>% 
-  filter(!is.na(Sex) & !is.na(BirthDate)) %>% 
-  filter(Sex != "Unknown") 
-dim(AD_merged) # dim = (3323038,8)
+  filter(!is.na(Sex) & !is.na(BirthDate) & Sex != "Unknown") %>% unique()
+dim(AD_merged) # dim = (3315246,7)
+save(AD_merged, file = paste0(raw_data_path, "mod/AD_merged.rda"))
 ```
 
 ### Build EHR features
 ```{r}
-# Get length of records
+# AD diagnosis information
+AD_diagnosis = AD_merged %>% filter(ICD_3digit %in% c('G30')) %>% group_by(PatientID) %>% 
+  arrange(EncounterDate, .by_group = TRUE) %>% slice_head(n = 1) %>% 
+  mutate(AdDiagnosisDate = EncounterDate, 
+         age_AD_diagnosis = as.numeric(AdDiagnosisDate - BirthDate)/365.25) %>% 
+  select(PatientID, AdDiagnosisDate, age_AD_diagnosis) %>% unique()
+dim(AD_diagnosis) # dim = (8536,3)
+# Get record-level features
+patient_level = AD_merged %>% left_join(AD_diagnosis) %>% 
+  filter(EncounterDate < AdDiagnosisDate) %>% group_by(PatientID) %>% 
+  mutate(RecordStart = min(EncounterDate), 
+         record_length = as.numeric(AdDiagnosisDate - RecordStart)/365.25) %>% 
+  select(PatientID, RecordStart, record_length, AdDiagnosisDate, age_AD_diagnosis) %>% unique() %>% 
+  filter(record_length >= 5)
+dim(patient_level) # dim = (1784,5)
+# Get diagnosis-level features (only keep the first time of diagnosis)
+diagnosis_level = AD_merged %>% right_join(patient_level) %>% 
+  filter((EncounterDate < AdDiagnosisDate) & (EncounterDate >= AdDiagnosisDate - years(5))) %>% 
+  group_by(PatientID) %>% mutate(n_record = length(unique(EncounterID))) %>% ungroup() %>% 
+  group_by(PatientID, ICD_3digit) %>% arrange(EncounterDate, .by_group = TRUE) %>% 
+  slice_head(n = 1) %>% ungroup() %>% 
+  mutate(FirstDiagnosisDate = EncounterDate, 
+         age_diagnosis = as.numeric(FirstDiagnosisDate - BirthDate)/365.25,
+         look_back = age_AD_diagnosis - age_diagnosis) %>% 
+  select(PatientID, Sex, BirthDate, race_ethnicity, record_length, n_record, AdDiagnosisDate, 
+         age_AD_diagnosis, FirstDiagnosisDate, ICD_3digit, age_diagnosis, look_back) %>% 
+  unique() %>% ungroup() %>% group_by(PatientID) %>% 
+  mutate(look_back_max = max(look_back)) %>% ungroup() %>% arrange(PatientID, look_back)
+dim(diagnosis_level) # dim = (72847,13)
+save(diagnosis_level, file = paste0(raw_data_path, "mod/diagnosis_level.rda"))
 ```
+
 
 

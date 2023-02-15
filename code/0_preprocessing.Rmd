@@ -98,8 +98,8 @@ patient_level = AD_merged %>% left_join(AD_diagnosis) %>%
   mutate(RecordStart = min(EncounterDate), 
          record_length = as.numeric(AdDiagnosisDate - RecordStart)/365.25) %>% 
   select(PatientID, RecordStart, record_length, AdDiagnosisDate, age_AD_diagnosis) %>% unique() %>% 
-  filter(record_length >= 5)
-dim(patient_level) # dim = (1784,5)
+  filter(record_length > 0)
+dim(patient_level) # dim = (6475,5)
 # Get diagnosis-level features (only keep the first time of diagnosis)
 diagnosis_level = AD_merged %>% right_join(patient_level) %>% 
   filter((EncounterDate < AdDiagnosisDate) & (EncounterDate >= AdDiagnosisDate - years(5))) %>% 
@@ -113,7 +113,7 @@ diagnosis_level = AD_merged %>% right_join(patient_level) %>%
          age_AD_diagnosis, FirstDiagnosisDate, ICD_3digit, age_diagnosis, look_back) %>% 
   unique() %>% ungroup() %>% group_by(PatientID) %>% 
   mutate(look_back_max = max(look_back)) %>% ungroup() %>% arrange(PatientID, look_back)
-dim(diagnosis_level) # dim = (72847,13)
+dim(diagnosis_level) # dim = (164889,13)
 save(diagnosis_level, file = paste0(raw_data_path, "mod/diagnosis_level.rda"))
 ```
 

@@ -17,7 +17,7 @@ raw_data_path = "/Users/Mingzhou/Desktop/Projects/AD-trajectory/data/"
 output_path = "/Users/Mingzhou/Desktop/Projects/AD-trajectory/output/"
 
 # Source in useful functions
-# source("code/functions.R")
+source("code/functions.R")
 ```
 
 # Part 1. Preprocessing of AD cases
@@ -102,18 +102,23 @@ patient_level = AD_merged %>% left_join(AD_diagnosis) %>%
 dim(patient_level) # dim = (6475,5)
 # Get diagnosis-level features (only keep the first time of diagnosis)
 diagnosis_level = AD_merged %>% right_join(patient_level) %>% 
-  filter((EncounterDate < AdDiagnosisDate) & (EncounterDate >= AdDiagnosisDate - years(5))) %>% 
-  group_by(PatientID) %>% mutate(n_record = length(unique(EncounterID))) %>% ungroup() %>% 
   group_by(PatientID, ICD_3digit) %>% arrange(EncounterDate, .by_group = TRUE) %>% 
   slice_head(n = 1) %>% ungroup() %>% 
   mutate(FirstDiagnosisDate = EncounterDate, 
          age_diagnosis = as.numeric(FirstDiagnosisDate - BirthDate)/365.25,
          look_back = age_AD_diagnosis - age_diagnosis) %>% 
-  select(PatientID, Sex, BirthDate, race_ethnicity, record_length, n_record, AdDiagnosisDate, 
+  filter((FirstDiagnosisDate < AdDiagnosisDate) & 
+           (FirstDiagnosisDate >= AdDiagnosisDate - years(5))) %>% 
+  select(PatientID, Sex, BirthDate, race_ethnicity, record_length, AdDiagnosisDate, 
          age_AD_diagnosis, FirstDiagnosisDate, ICD_3digit, age_diagnosis, look_back) %>% 
   unique() %>% ungroup() %>% group_by(PatientID) %>% 
   mutate(look_back_max = max(look_back)) %>% ungroup() %>% arrange(PatientID, look_back)
-dim(diagnosis_level) # dim = (164889,13)
+dim(diagnosis_level) # dim = (145323,12)
+diagnosis_level2 =  AD_merged %>% right_join(patient_level) %>% 
+  filter((EncounterDate < AdDiagnosisDate) & 
+           (EncounterDate >= AdDiagnosisDate - years(5))) %>% 
+  group_by(PatientID) %>% mutate(n_record = length(unique(EncounterID))) %>% ungroup() %>% 
+  select(PatientID, n_record)
 save(diagnosis_level, file = paste0(raw_data_path, "mod/diagnosis_level.rda"))
 ```
 

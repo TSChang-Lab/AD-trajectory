@@ -4,7 +4,7 @@ This repository contains code and documentation for the study:
 
 "Identifying common disease trajectories of Alzheimer’s disease with electronic health records"
 by Mingzhou Fu, MPH; Sriram Sankararaman, PhD; Bogdan Pasaniuc, PhD; Keith Vossel, MD, MSc; Timothy S. Chang, MD, PhD.
-Published in eBioMedicine, 2025.
+Published in eBioMedicine, 2025. (https://www.sciencedirect.com/science/article/pii/S2352396425002750#sec2)
 
 📄 Abstract
 
